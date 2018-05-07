@@ -11,10 +11,15 @@ pylint = "*"
 twine = ">=1.11.0"
 wheel = ">=0.31.0"
 setuptools = ">=39.0.1"
+tox = ">=3.0.0"
+"flake8" = ">=0.6.1"
+tox-pyenv = ">=1.1.0"
+invoke = ">=0.23.0"
 
 [requires]
 python_version = "3.6"
 
 [scripts]
-build = "python setup.py sdist bdist_wheel"
-deploy = "twine upload dist/*"
+test = "invoke test"
+build = "invoke build"
+release = "invoke release"
