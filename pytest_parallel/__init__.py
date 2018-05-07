@@ -6,8 +6,16 @@ import _pytest
 import platform
 import threading
 import collections
-import queue as Queue
 from multiprocessing import Manager, Process
+
+__version__ = '0.0.1'
+
+try:
+    # py3
+    import queue as Queue
+except Exception:
+    # py2
+    import Queue as Queue
 
 
 def parse_config(config, name):
@@ -24,8 +32,10 @@ def force(fn):
 
 
 def pytest_addoption(parser):
-    workers_help = 'Set the max num of workers (aka processes) to start (int or "auto" - one per core)'
-    tests_per_worker_help = 'Set the max num of concurrent tests for each worker (int or "auto" - split evenly)'
+    workers_help = ('Set the max num of workers (aka processes) to start '
+                    '(int or "auto" - one per core)')
+    tests_per_worker_help = ('Set the max num of concurrent tests for each '
+                             'worker (int or "auto" - split evenly)')
 
     group = parser.getgroup('pytest-parallel')
     group.addoption(
@@ -63,7 +73,7 @@ class ThreadWorker(threading.Thread):
         threading.Thread.__init__(self)
         self.queue = queue
         self.session = session
- 
+
     def run(self):
         while True:
             try:
@@ -139,7 +149,9 @@ class ParallelRunner(object):
     def __init__(self, config):
         self._manager = Manager()
         reporter = config.pluginmanager.getplugin('terminalreporter')
-        reporter.showfspath = False # prevent mangling the output
+
+        # prevent mangling the output
+        reporter.showfspath = False
 
         # get the number of workers
         workers = parse_config(config, 'workers')
@@ -155,31 +167,30 @@ class ParallelRunner(object):
                 print('INFO: pytest-parallel forces 1 worker on Windows')
         except ValueError:
             raise ValueError('workers can only be an integer or "auto"')
-        
+
         self.workers = workers
 
         if self.workers > 1:
             # ensure stats are process-safe
             reporter.stats = self._manager.dict()
             setdefault = reporter.stats.setdefault
+
             def setdefault_proxy(key, default=None):
                 if isinstance(default, list) and len(default) == 0:
                     default = force(lambda: self._manager.list())
                     return force(lambda: setdefault(key, default))
             reporter.stats.setdefault = setdefault_proxy
 
-
     @pytest.mark.tryfirst
     def pytest_sessionstart(self, session):
         # make the session threadsafe
         _pytest.runner.SetupState = ThreadLocalSetupState
-        
+
         # ensure that the fixtures (specifically finalizers) are threadsafe
         _pytest.fixtures.FixtureDef = ThreadLocalFixtureDef
 
         # make the environment threadsafe
         os.environ = ThreadLocalEnviron(os.environ)
-
 
     def pytest_runtestloop(self, session):
         # get the number of tests per worker
@@ -188,29 +199,42 @@ class ParallelRunner(object):
             if tests_per_worker == 'auto':
                 tests_per_worker = 50
             if tests_per_worker:
-                tests_per_worker = min(int(tests_per_worker), math.ceil(len(session.items)/self.workers))
+                tests_per_worker = int(tests_per_worker)
+                evenly_divided = math.ceil(len(session.items)/self.workers)
+                tests_per_worker = min(tests_per_worker, evenly_divided)
             else:
                 tests_per_worker = 1
         except ValueError:
-            raise ValueError('tests_per_worker can only be an integer or "auto"')
+            raise ValueError(('tests_per_worker can only be '
+                              'an integer or "auto"'))
 
-        worker_noun = 'workers' if self.workers > 1 else 'worker'
-        test_noun = 'tests' if tests_per_worker > 1 else 'test'
-        print('pytest-parallel: {} {} (processes), {} {} per worker (threads)'
-            .format(self.workers, worker_noun, tests_per_worker, test_noun))
+        if self.workers > 1:
+            worker_noun, process_noun = ('workers', 'processes')
+        else:
+            worker_noun, process_noun = ('worker', 'process')
+
+        if tests_per_worker > 1:
+            test_noun, thread_noun = ('tests', 'threads')
+        else:
+            test_noun, thread_noun = ('test', 'thread')
+
+        print('pytest-parallel: {} {} ({}), {} {} per worker ({})'
+              .format(self.workers, worker_noun, process_noun,
+                      tests_per_worker, test_noun, thread_noun))
 
         queue = Queue.Queue() if self.workers == 1 else self._manager.Queue()
 
         for i in range(len(session.items)):
             queue.put(i)
-        
+
         if self.workers == 1:
             process_with_threads(queue, session, tests_per_worker)
             return True
 
         processes = []
         for _ in range(self.workers):
-            process = Process(target=process_with_threads, args=(queue, session, tests_per_worker))
+            process = Process(target=process_with_threads,
+                              args=(queue, session, tests_per_worker))
             process.start()
             processes.append(process)
         [p.join() for p in processes]
