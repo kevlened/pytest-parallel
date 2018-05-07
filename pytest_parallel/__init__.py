@@ -8,7 +8,7 @@ import threading
 import collections
 from multiprocessing import Manager, Process
 
-__version__ = '0.0.1'
+__version__ = '0.0.2'
 
 try:
     # py3
