@@ -14,7 +14,7 @@ with open(path.join('pytest_parallel', '__init__.py'), encoding='utf-8') as f:
 # Get the install_requires from the Pipfile
 with open(path.join('Pipfile'), encoding='utf-8') as f:
     pkgs = re.search(r'^\[packages\]([^\[]*)', f.read(), re.M).group(1).strip()
-    pkg_pattern = re.compile(r'"?(.*?)"? = "(.*?)"')
+    pkg_pattern = re.compile(r'"?(.*?)"? = ["\'](.*?)["\']')
     install_requires = [name if version == '*' else name + version
                         for (name, version)
                         in re.findall(pkg_pattern, pkgs)]
