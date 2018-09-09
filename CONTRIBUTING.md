@@ -35,5 +35,5 @@ Build a wheel with `pipenv run build`
 1) Install twine if not already installed
 2) Checkout the master branch
 3) Ensure your branch is up-to-date
-4) Change __version__ in pytest_parallel/__init__.py
+4) Change \_\_version__ in pytest_parallel/\_\_init__.py
 5) `pipenv run release`
