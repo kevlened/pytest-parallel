@@ -5,7 +5,6 @@ import pytest
 import _pytest
 import platform
 import threading
-import collections
 from multiprocessing import Manager, Process
 
 __version__ = '0.0.2'
@@ -99,40 +98,50 @@ def pytest_configure(config):
         config.pluginmanager.register(ParallelRunner(config), 'parallelrunner')
 
 
-class ThreadLocalEnviron(collections.MutableMapping):
-    def __init__(self, *args, **kwargs):
-        self.dict_store = {}
-        self.thread_store = threading.local()
-        self.update(dict(*args, **kwargs))
+class ThreadLocalEnviron(os._Environ):
+    def __init__(self, env):
+        super().__init__(
+            env._data,
+            env.encodekey,
+            env.decodekey,
+            env.encodevalue,
+            env.decodevalue,
+            env.putenv,
+            env.unsetenv
+        )
+        if hasattr(env, 'thread_store'):
+            self.thread_store = env.thread_store
+        else:
+            self.thread_store = threading.local()
 
     def __getitem__(self, key):
         if key == 'PYTEST_CURRENT_TEST':
             return getattr(self.thread_store, key, None)
-        return self.dict_store[key]
+        return super().__getitem__(key)
 
     def __setitem__(self, key, value):
         if key == 'PYTEST_CURRENT_TEST':
             setattr(self.thread_store, key, value)
         else:
-            self.dict_store[key] = value
+            super().__setitem__(key, value)
 
     def __delitem__(self, key):
         if key == 'PYTEST_CURRENT_TEST':
-            delattr(self.thread_store, self.__keytransform__(key))
+            delattr(self.thread_store, key)
         else:
-            del self.dict_store[self.__keytransform__(key)]
+            super().__delitem__(key)
 
     def __iter__(self):
         tmp = {}
-        tmp.update(self.dict_store)
+        tmp.update(self._data)
         tmp.update(self.thread_store.__dict__)
         return iter(tmp)
 
     def __len__(self):
-        return len(self.thread_store.__dict__) + len(self.dict_store)
+        return len(self.thread_store.__dict__) + len(self._data)
 
-    def __keytransform__(self, key):
-        return key
+    def copy(self):
+        return type(self)(self)
 
 
 class ThreadLocalSetupState(threading.local, _pytest.runner.SetupState):
