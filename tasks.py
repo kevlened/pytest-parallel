@@ -15,9 +15,9 @@ def test(c):
 
 @task
 def build(c):
-    shutil.rmtree('build')
-    shutil.rmtree('dist')
-    shutil.rmtree('pytest_parallel.egg-info')
+    shutil.rmtree('build', ignore_errors=True)
+    shutil.rmtree('dist', ignore_errors=True)
+    shutil.rmtree('pytest_parallel.egg-info', ignore_errors=True)
     c.run('python setup.py sdist bdist_wheel')
 
 
