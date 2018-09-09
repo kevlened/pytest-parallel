@@ -16,7 +16,7 @@ def test_concurrent_fixture(testdir):
 
         def test_0(driver):
             print_('inside test_0')
-            time.sleep(.1)
+            time.sleep(.2)
 
         def test_1(driver):
             print_('inside test_1')
