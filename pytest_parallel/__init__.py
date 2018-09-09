@@ -7,7 +7,7 @@ import platform
 import threading
 from multiprocessing import Manager, Process
 
-__version__ = '0.0.2'
+__version__ = '0.0.3'
 
 try:
     # py3
