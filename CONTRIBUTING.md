@@ -25,3 +25,15 @@ Assuming you've set up your environment, you can run `pipenv run test` to run th
 3) `pyenv install x.x.x`
 4) `pyenv local 3.6.x 3.7.x 3.x.x ...` to set the patch version for each minor version
 5) Ensure that running `python3.6` starts a REPL and doesn't list available versions
+
+## Building
+
+Build a wheel with `pipenv run build`
+
+## Releasing to PyPI
+
+1) Install twine if not already installed
+2) Checkout the master branch
+3) Ensure your branch is up-to-date
+4) Change __version__ in pytest_parallel/__init__.py
+5) `pipenv run release`
