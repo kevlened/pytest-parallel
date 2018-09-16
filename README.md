@@ -1,5 +1,5 @@
 # pytest-parallel
-a py.test plugin for parallel and concurrent testing
+a pytest plugin for parallel and concurrent testing
 
 ## What?
 

@@ -116,26 +116,37 @@ class ThreadLocalEnviron(os._Environ):
 
     def __getitem__(self, key):
         if key == 'PYTEST_CURRENT_TEST':
-            return getattr(self.thread_store, key, None)
+            if hasattr(self.thread_store, key):
+                value = getattr(self.thread_store, key)
+                return self.decodevalue(value)
+            else:
+                raise KeyError(key) from None
         return super().__getitem__(key)
 
     def __setitem__(self, key, value):
         if key == 'PYTEST_CURRENT_TEST':
+            value = self.encodevalue(value)
+            self.putenv(self.encodekey(key), value)
             setattr(self.thread_store, key, value)
         else:
             super().__setitem__(key, value)
 
     def __delitem__(self, key):
         if key == 'PYTEST_CURRENT_TEST':
-            delattr(self.thread_store, key)
+            self.unsetenv(self.encodekey(key))
+            if hasattr(self.thread_store, key):
+                delattr(self.thread_store, key)
+            else:
+                raise KeyError(key) from None
         else:
             super().__delitem__(key)
 
     def __iter__(self):
-        tmp = {}
-        tmp.update(self._data)
-        tmp.update(self.thread_store.__dict__)
-        return iter(tmp)
+        if hasattr(self.thread_store, 'PYTEST_CURRENT_TEST'):
+            yield 'PYTEST_CURRENT_TEST'
+        keys = list(self._data)
+        for key in keys:
+            yield self.decodekey(key)
 
     def __len__(self):
         return len(self.thread_store.__dict__) + len(self._data)

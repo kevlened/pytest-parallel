@@ -90,6 +90,10 @@ def test_environ_shim(testdir, cli_args):
             environ_keys = dir(os.environ)
             assert list(set(expected) - set(environ_keys)) == []
             assert list(os.environ.keys()) == list(os.environ.copy().keys())
+
+            for key, value in os.environ.items():
+                assert isinstance(key, str)
+                assert isinstance(value, str)
     """)
     result = testdir.runpytest(*cli_args)
     result.assert_outcomes(passed=1)

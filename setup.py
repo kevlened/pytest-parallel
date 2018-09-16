@@ -23,7 +23,7 @@ setup(
     name='pytest-parallel',
     version=version,
     license='MIT',
-    description='a py.test plugin for parallel and concurrent testing',
+    description='a pytest plugin for parallel and concurrent testing',
     long_description=long_description,
     long_description_content_type='text/markdown',
     url='https://github.com/browsertron/pytest-parallel',
