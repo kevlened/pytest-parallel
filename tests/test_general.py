@@ -40,7 +40,7 @@ def test_sanity_sync_double(testdir):
 def test_sanity_async_single(testdir):
     testdir.makepyfile("""
         import time
-        def test_sync():
+        def test_async():
             time.sleep(.1)
             assert 1 == 1
     """)
@@ -51,11 +51,11 @@ def test_sanity_async_single(testdir):
 def test_sanity_async_double(testdir):
     testdir.makepyfile("""
         import time
-        def test_sync_1():
+        def test_async_1():
             time.sleep(.1)
             assert 1 == 1
 
-        def test_sync_2():
+        def test_async_2():
             time.sleep(.1)
             assert 2 == 2
     """)
@@ -97,3 +97,70 @@ def test_environ_shim(testdir, cli_args):
     """)
     result = testdir.runpytest(*cli_args)
     result.assert_outcomes(passed=1)
+
+
+@pytest.mark.parametrize('cli_args', [
+  [],
+  ['--workers=2'],
+  ['--tests-per-worker=2']
+])
+def test_skip_markers(testdir, cli_args):
+    testdir.makepyfile("""
+        import pytest
+
+        def test_1():
+            assert 1 == 1
+
+        @pytest.mark.skip(reason="because")
+        def test_2():
+            assert 2 == 2
+    """)
+    result = testdir.runpytest(*cli_args)
+    result.assert_outcomes(passed=1, skipped=1)
+
+
+@pytest.mark.parametrize('cli_args', [
+  [],
+  ['--workers=2'],
+  ['--tests-per-worker=2']
+])
+def test_skipif_markers(testdir, cli_args):
+    testdir.makepyfile("""
+        import pytest
+
+        def test_1():
+            assert 1 == 1
+
+        @pytest.mark.skipif(True, reason="because")
+        def test_2():
+            assert 2 == 2
+
+        @pytest.mark.skipif(
+            "config.getoption('workers') or not config.getoption('workers')",
+            reason="because"
+        )
+        def test_3():
+            assert 3 == 3
+    """)
+    result = testdir.runpytest(*cli_args)
+    result.assert_outcomes(passed=1, skipped=2)
+
+
+@pytest.mark.parametrize('cli_args', [
+  ['-m marked'],
+  ['-m marked', '--workers=2'],
+  ['-m marked', '--tests-per-worker=2']
+])
+def test_custom_markers(testdir, cli_args):
+    testdir.makepyfile("""
+        import pytest
+
+        def test_1():
+            assert 1 == 1
+
+        @pytest.mark.marked
+        def test_2():
+            assert 2 == 2
+    """)
+    result = testdir.runpytest(*cli_args)
+    result.assert_outcomes(passed=1, skipped=0)
