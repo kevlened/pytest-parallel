@@ -5,16 +5,10 @@ import pytest
 import _pytest
 import platform
 import threading
+import queue as Queue
 from multiprocessing import Manager, Process
 
 __version__ = '0.0.4'
-
-try:
-    # py3
-    import queue as Queue
-except Exception:
-    # py2
-    import Queue as Queue
 
 
 def parse_config(config, name):

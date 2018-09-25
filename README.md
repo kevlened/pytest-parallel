@@ -22,7 +22,8 @@ Put simply, `pytest-xdist` does parallelism while `pytest-parallel` does paralle
 ## Requirements
 
 * Python3 version [3.6+]
-* Unix or Mac for parallelism
+* Unix or Mac for `--workers`
+* Unix, Mac, or Windows for `--tests-per-worker`
 
 ## Installation
 
