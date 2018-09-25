@@ -147,6 +147,76 @@ def test_skipif_markers(testdir, cli_args):
 
 
 @pytest.mark.parametrize('cli_args', [
+  [],
+  ['--workers=2'],
+  ['--tests-per-worker=2']
+])
+def test_parametrize_markers(testdir, cli_args):
+    testdir.makepyfile("""
+        import pytest
+
+        @pytest.mark.parametrize('num', [
+            1,
+            2
+        ])
+        def test_1(num):
+            assert num == num
+    """)
+    result = testdir.runpytest(*cli_args)
+    result.assert_outcomes(passed=2)
+
+
+@pytest.mark.parametrize('cli_args', [
+  ['-s'],
+#   ['--workers=2'],
+  ['-s', '--tests-per-worker=2']
+])
+def test_tryfirst_markers(testdir, cli_args):
+    testdir.makepyfile("""
+        import pytest
+        from six import print_
+
+        def test_1():
+            print_('first')
+
+        @pytest.mark.tryfirst
+        def test_2():
+            print_('second')
+    """)
+    result = testdir.runpytest(*cli_args)
+    result.stdout.fnmatch_lines([
+        '*second',
+        '*first'
+    ])
+    result.assert_outcomes(passed=2)
+
+
+@pytest.mark.parametrize('cli_args', [
+  ['-s'],
+#   ['-s', '--workers=2'],
+  ['-s', '--tests-per-worker=2']
+])
+def test_trylast_markers(testdir, cli_args):
+    testdir.makepyfile("""
+        import pytest
+        from six import print_
+
+        @pytest.mark.trylast
+        def test_1():
+            print_('first')
+
+        def test_2():
+            print_('second')
+    """)
+    result = testdir.runpytest(*cli_args)
+    result.stdout.fnmatch_lines([
+        '*first',
+        '*second'
+    ])
+    result.assert_outcomes(passed=2)
+
+
+@pytest.mark.parametrize('cli_args', [
   ['-m marked'],
   ['-m marked', '--workers=2'],
   ['-m marked', '--tests-per-worker=2']
