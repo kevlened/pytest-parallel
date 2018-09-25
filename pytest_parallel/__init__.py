@@ -198,6 +198,13 @@ class ParallelRunner(object):
             def setdefault_proxy(key, default=None):
                 if isinstance(default, list) and len(default) == 0:
                     default = force(lambda: self._manager.list())
+                    if key == "deselected":
+                        # "deselected" on stats can safely ignore list values
+                        res = force(lambda: setdefault(key, default))
+                        res.extend = lambda iter: [
+                            default.append(1) for i in range(len(iter))
+                        ]
+                        return res
                     return force(lambda: setdefault(key, default))
             reporter.stats.setdefault = setdefault_proxy
 
