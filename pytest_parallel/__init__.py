@@ -8,7 +8,7 @@ import threading
 import queue as Queue
 from multiprocessing import Manager, Process
 
-__version__ = '0.0.4'
+__version__ = '0.0.5'
 
 
 def parse_config(config, name):
