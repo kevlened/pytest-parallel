@@ -159,6 +159,32 @@ class ThreadLocalFixtureDef(threading.local, _pytest.fixtures.FixtureDef):
         super(ThreadLocalFixtureDef, self).__init__(*args, **kwargs)
 
 
+class SafeNumber(object):
+    def __init__(self, manager):
+        self._val = manager.Value('i', 0)
+        self._lock = manager.Lock()
+
+    def __add__(self, i):
+        with self._lock:
+            self._val.value += i
+
+    def __gt__(self, i):
+        with self._lock:
+            return int(self._val.value) > i
+
+    def __lt__(self, i):
+        with self._lock:
+            return int(self._val.value) < i
+
+    def __eq__(self, i):
+        with self._lock:
+            return int(self._val.value) == i
+
+    @property
+    def value(self):
+        return int(self._val.value)
+
+
 class ParallelRunner(object):
     def __init__(self, config):
         self._manager = Manager()
@@ -251,6 +277,9 @@ class ParallelRunner(object):
         if self.workers == 1:
             process_with_threads(queue, session, tests_per_worker)
             return True
+
+        # Ensure testsfailed is process-safe
+        session.testsfailed = SafeNumber(self._manager)
 
         processes = []
         for _ in range(self.workers):
