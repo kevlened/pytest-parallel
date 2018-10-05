@@ -16,3 +16,4 @@ def test_normal(testdir, cli_args):
     """)
     result = testdir.runpytest(*cli_args)
     result.assert_outcomes(failed=2)
+    assert result.ret == 1
