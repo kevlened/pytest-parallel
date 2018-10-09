@@ -180,6 +180,10 @@ class SafeNumber(object):
         with self._lock:
             return int(self._val.value) == i
 
+    def __bool__(self):
+        return not self.__eq__(0)
+    __nonzero__=__bool__
+
     @property
     def value(self):
         return int(self._val.value)
