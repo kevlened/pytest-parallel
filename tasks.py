@@ -14,6 +14,11 @@ def test(c):
 
 
 @task
+def lint(c):
+    c.run('tox -e flake8')
+
+
+@task
 def build(c):
     shutil.rmtree('build', ignore_errors=True)
     shutil.rmtree('dist', ignore_errors=True)

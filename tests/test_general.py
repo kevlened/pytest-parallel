@@ -23,6 +23,7 @@ def test_sanity_sync_single(testdir):
     """)
     result = testdir.runpytest()
     result.assert_outcomes(passed=1)
+    assert result.ret == 0
 
 
 def test_sanity_sync_double(testdir):
@@ -35,6 +36,7 @@ def test_sanity_sync_double(testdir):
     """)
     result = testdir.runpytest()
     result.assert_outcomes(passed=2)
+    assert result.ret == 0
 
 
 def test_sanity_async_single(testdir):
@@ -46,6 +48,7 @@ def test_sanity_async_single(testdir):
     """)
     result = testdir.runpytest()
     result.assert_outcomes(passed=1)
+    assert result.ret == 0
 
 
 def test_sanity_async_double(testdir):
@@ -61,6 +64,7 @@ def test_sanity_async_double(testdir):
     """)
     result = testdir.runpytest()
     result.assert_outcomes(passed=2)
+    assert result.ret == 0
 
 
 @pytest.mark.parametrize('cli_args', [
@@ -97,6 +101,7 @@ def test_environ_shim(testdir, cli_args):
     """)
     result = testdir.runpytest(*cli_args)
     result.assert_outcomes(passed=1)
+    assert result.ret == 0
 
 
 @pytest.mark.parametrize('cli_args', [
@@ -117,6 +122,7 @@ def test_skip_markers(testdir, cli_args):
     """)
     result = testdir.runpytest(*cli_args)
     result.assert_outcomes(passed=1, skipped=1)
+    assert result.ret == 0
 
 
 @pytest.mark.parametrize('cli_args', [
@@ -144,6 +150,7 @@ def test_skipif_markers(testdir, cli_args):
     """)
     result = testdir.runpytest(*cli_args)
     result.assert_outcomes(passed=1, skipped=2)
+    assert result.ret == 0
 
 
 @pytest.mark.parametrize('cli_args', [
@@ -164,3 +171,4 @@ def test_custom_markers(testdir, cli_args):
     """)
     result = testdir.runpytest(*cli_args)
     result.assert_outcomes(passed=1, skipped=0)
+    assert result.ret == 0

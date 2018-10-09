@@ -182,7 +182,6 @@ class SafeNumber(object):
 
     def __bool__(self):
         return not self.__eq__(0)
-    __nonzero__=__bool__
 
     @property
     def value(self):

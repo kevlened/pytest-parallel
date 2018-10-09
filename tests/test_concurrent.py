@@ -37,3 +37,4 @@ def test_concurrent_fixture(testdir):
         '*after test test_0'
     ])
     result.assert_outcomes(passed=2)
+    assert result.ret == 0
