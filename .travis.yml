@@ -1,6 +1,10 @@
 language: python
 sudo: required
 dist: xenial
+branches:
+  only:
+  - master
+cache: pip
 python:
   - "3.6"
   - "3.7"
