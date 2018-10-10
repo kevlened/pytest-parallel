@@ -162,11 +162,20 @@ class ThreadLocalFixtureDef(threading.local, _pytest.fixtures.FixtureDef):
 class SafeNumber(object):
     def __init__(self, manager):
         self._val = manager.Value('i', 0)
-        self._lock = manager.Lock()
+        self._lock = manager.RLock()
 
     def __add__(self, i):
         with self._lock:
+            return self._val.value + i
+
+    def __iadd__(self, i):
+        with self._lock:
             self._val.value += i
+            return self
+
+    def __radd__(self, i):
+        with self._lock:
+            return self._val.value + i
 
     def __gt__(self, i):
         with self._lock:
@@ -182,6 +191,14 @@ class SafeNumber(object):
 
     def __bool__(self):
         return not self.__eq__(0)
+
+    def __int__(self):
+        with self._lock:
+            return int(self._val.value)
+
+    def __str__(self):
+        with self._lock:
+            return str(self._val.value)
 
     @property
     def value(self):
