@@ -172,3 +172,27 @@ def test_custom_markers(testdir, cli_args):
     result = testdir.runpytest(*cli_args)
     result.assert_outcomes(passed=1, skipped=0)
     assert result.ret == 0
+
+
+@pytest.mark.parametrize('cli_args', [
+  [],
+  ['--workers=2'],
+  ['--tests-per-worker=2']
+])
+def test_multiple_failures(testdir, cli_args):
+    testdir.makepyfile("""
+        def test_0():
+            assert 1 == 2
+
+        def test_1():
+            assert True == False
+
+        def test_2():
+            assert 1 == 2
+
+        def test_3():
+            assert True == False
+    """)
+    result = testdir.runpytest(*cli_args)
+    result.assert_outcomes(failed=4)
+    assert result.ret == 1
