@@ -7,6 +7,8 @@ def test_concurrent_fixture(testdir):
         @pytest.fixture
         def driver(request):
             fn_name = request.function.__name__
+            if fn_name == 'test_1':
+                time.sleep(.05)
             print_('before sleep', fn_name)
             time.sleep(.1)
             print_('after sleep', fn_name)
