@@ -6,6 +6,7 @@ import _pytest
 import platform
 import threading
 import queue as Queue
+from py._xmlgen import raw
 from multiprocessing import Manager, Process
 
 __version__ = '0.0.8'
@@ -168,14 +169,14 @@ class SafeNumber(object):
         with self._lock:
             return self._val.value + i
 
+    def __radd__(self, i):
+        with self._lock:
+            return self._val.value + i
+
     def __iadd__(self, i):
         with self._lock:
             self._val.value += i
             return self
-
-    def __radd__(self, i):
-        with self._lock:
-            return self._val.value + i
 
     def __gt__(self, i):
         with self._lock:
@@ -205,10 +206,29 @@ class SafeNumber(object):
         return int(self._val.value)
 
 
+class SafeHtmlTestLogs(raw):
+    def __init__(self, manager):
+        self._val = manager.list()
+        self._lock = manager.RLock()
+
+    def insert(self, index, tbody):
+        # FIXME: sort by this order
+        # ['Error', 'Failed', 'Rerun', 'XFailed',
+        #  'XPassed', 'Skipped', 'Passed']
+        # https://github.com/pytest-dev/pytest-html/blob/cf21aed3635e5bd4baa24e8ea16ffe9dfda1845e/pytest_html/plugin.py#L141-L144
+        log_entry = tbody.unicode(indent=2)
+        self._val.append(log_entry)
+
+    @property
+    def uniobj(self):
+        return ''.join(self._val)
+
+
 class ParallelRunner(object):
     def __init__(self, config):
         self._manager = Manager()
         reporter = config.pluginmanager.getplugin('terminalreporter')
+        html = config.pluginmanager.getplugin('html')
 
         # prevent mangling the output
         reporter.showfspath = False
@@ -247,6 +267,20 @@ class ParallelRunner(object):
                         return res
                     return force(lambda: setdefault(key, default))
             reporter.stats.setdefault = setdefault_proxy
+
+            # ensure pytest-html is process safe
+            if html and hasattr(config, '_html'):
+                htmlplugin = config._html
+                htmlplugin.test_logs = SafeHtmlTestLogs(self._manager)
+                htmlplugin.errors = SafeNumber(self._manager)
+                htmlplugin.failed = SafeNumber(self._manager)
+                htmlplugin.passed = SafeNumber(self._manager)
+                htmlplugin.skipped = SafeNumber(self._manager)
+                htmlplugin.xfailed = SafeNumber(self._manager)
+                htmlplugin.xpassed = SafeNumber(self._manager)
+                has_rerun = config.pluginmanager.hasplugin('rerunfailures')
+                htmlplugin.rerun = SafeNumber(self._manager) \
+                    if has_rerun else None
 
     @pytest.mark.tryfirst
     def pytest_sessionstart(self, session):

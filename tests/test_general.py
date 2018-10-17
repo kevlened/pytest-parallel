@@ -1,4 +1,5 @@
 import pytest
+import re
 
 
 def test_help(testdir):
@@ -154,9 +155,9 @@ def test_skipif_markers(testdir, cli_args):
 
 
 @pytest.mark.parametrize('cli_args', [
-  ['-m marked'],
-  ['-m marked', '--workers=2'],
-  ['-m marked', '--tests-per-worker=2']
+  [],
+  ['--workers=2'],
+  ['--tests-per-worker=2']
 ])
 def test_custom_markers(testdir, cli_args):
     testdir.makepyfile("""
@@ -169,7 +170,7 @@ def test_custom_markers(testdir, cli_args):
         def test_2():
             assert 2 == 2
     """)
-    result = testdir.runpytest(*cli_args)
+    result = testdir.runpytest('-m marked', *cli_args)
     result.assert_outcomes(passed=1, skipped=0)
     assert result.ret == 0
 
@@ -196,3 +197,29 @@ def test_multiple_failures(testdir, cli_args):
     result = testdir.runpytest(*cli_args)
     result.assert_outcomes(failed=4)
     assert result.ret == 1
+
+
+@pytest.mark.parametrize('cli_args', [
+  [],
+  ['--workers=2'],
+  ['--tests-per-worker=2']
+])
+def test_pytest_html(testdir, cli_args):
+    report = testdir.tmpdir.join('report.html')
+    testdir.makepyfile("""
+        def test_1():
+            assert 1 == 1
+
+        def test_2():
+            assert 1 == 2
+    """)
+    result = testdir.runpytest('--html=' + str(report), *cli_args)
+    result.assert_outcomes(passed=1, failed=1)
+    assert result.ret == 1
+    with open(str(report)) as f:
+        html = str(f.read())
+        assert re.search('2 tests ran', html) is not None
+        assert re.search('1 passed', html) is not None
+        assert re.search('1 failed', html) is not None
+        assert re.search('passed results-table-row', html) is not None
+        assert re.search('failed results-table-row', html) is not None
