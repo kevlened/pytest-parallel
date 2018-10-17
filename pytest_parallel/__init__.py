@@ -9,7 +9,7 @@ import queue as Queue
 from py._xmlgen import raw
 from multiprocessing import Manager, Process
 
-__version__ = '0.0.8'
+__version__ = '0.0.9'
 
 
 def parse_config(config, name):
