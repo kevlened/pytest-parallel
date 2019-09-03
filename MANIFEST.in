@@ -1,1 +1,4 @@
+include LICENSE
 include Pipfile
+include *.md
+recursive-include tests *.py
