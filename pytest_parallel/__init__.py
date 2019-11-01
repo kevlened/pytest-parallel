@@ -294,6 +294,11 @@ class ParallelRunner(object):
         os.environ = ThreadLocalEnviron(os.environ)
 
     def pytest_runtestloop(self, session):
+        if session.testsfailed and \
+                not session.config.option.continue_on_collection_errors:
+            raise session.Interrupted(
+                "%d errors during collection" % session.testsfailed)
+
         # get the number of tests per worker
         tests_per_worker = parse_config(session.config, 'tests_per_worker')
         try:
