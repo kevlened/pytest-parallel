@@ -53,22 +53,26 @@ def run_test(session, item, nextitem):
         raise session.Interrupted(session.shouldstop)
 
 
-def process_with_threads(queue, session, tests_per_worker):
+def process_with_threads(queue, session, tests_per_worker, errors):
     threads = []
     for _ in range(tests_per_worker):
-        thread = ThreadWorker(queue, session)
+        thread = ThreadWorker(queue, session, errors)
         thread.start()
         threads.append(thread)
     [t.join() for t in threads]
 
 
 class ThreadWorker(threading.Thread):
-    def __init__(self, queue, session):
+    def __init__(self, queue, session, errors):
         threading.Thread.__init__(self)
         self.queue = queue
         self.session = session
+        self.errors = errors
 
     def run(self):
+        from tblib import pickling_support
+
+        pickling_support.install()
         while True:
             try:
                 index = self.queue.get_nowait()
@@ -80,6 +84,11 @@ class ThreadWorker(threading.Thread):
             item = self.session.items[index]
             try:
                 run_test(self.session, item, None)
+            except BaseException:
+                import pickle
+                import sys
+
+                self.errors.put((self.name, pickle.dumps(sys.exc_info())))
             finally:
                 try:
                     self.queue.task_done()
@@ -339,12 +348,13 @@ class ParallelRunner(object):
                       tests_per_worker, test_noun, thread_noun))
 
         queue = Queue.Queue() if self.workers == 1 else self._manager.Queue()
+        errors = Queue.Queue() if self.workers == 1 else self._manager.Queue()
 
         for i in range(len(session.items)):
             queue.put(i)
 
         if self.workers == 1:
-            process_with_threads(queue, session, tests_per_worker)
+            process_with_threads(queue, session, tests_per_worker, errors)
             return True
 
         # Ensure testsfailed is process-safe
@@ -353,10 +363,26 @@ class ParallelRunner(object):
         processes = []
         for _ in range(self.workers):
             process = Process(target=process_with_threads,
-                              args=(queue, session, tests_per_worker))
+                              args=(queue, session, tests_per_worker, errors))
             process.start()
             processes.append(process)
         [p.join() for p in processes]
         queue.join()
+
+        if not errors.empty():
+            import six
+            import pickle
+
+            thread_name, errinfo = errors.get()
+            err = pickle.loads(errinfo)
+            err[1].__traceback__ = err[2]
+
+            exc = RuntimeError(
+                "pytest-parallel got {} errors, raising the first from {}.".format(
+                    errors.qsize() + 1, thread_name
+                )
+            )
+
+            six.raise_from(exc, err[1])
 
         return True
