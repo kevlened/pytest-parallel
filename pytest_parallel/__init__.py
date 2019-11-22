@@ -78,11 +78,13 @@ class ThreadWorker(threading.Thread):
                 time.sleep(.1)
                 continue
             item = self.session.items[index]
-            run_test(self.session, item, None)
             try:
-                self.queue.task_done()
-            except ConnectionRefusedError:
-                pass
+                run_test(self.session, item, None)
+            finally:
+                try:
+                    self.queue.task_done()
+                except ConnectionRefusedError:
+                    pass
 
 
 @pytest.mark.trylast
