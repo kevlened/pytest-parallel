@@ -87,7 +87,8 @@ class ThreadWorker(threading.Thread):
             except BaseException:
                 import pickle
                 import sys
-                self.errors.put(pickle.dumps(sys.exc_info()))
+
+                self.errors.put((self.name, pickle.dumps(sys.exc_info())))
             finally:
                 try:
                     self.queue.task_done()
@@ -359,11 +360,15 @@ class ParallelRunner(object):
             import six
             import pickle
 
-            exc = RuntimeError("pytest-parallel got {} errors, raising the first.".format(
-                errors.qsize()
-            ))
-            err = pickle.loads(errors.get())
+            thread_name, errinfo = errors.get()
+            err = pickle.loads(errinfo)
             err[1].__traceback__ = err[2]
+
+            exc = RuntimeError(
+                "pytest-parallel got {} errors, raising the first from {}.".format(
+                    errors.qsize() + 1, thread_name
+                )
+            )
 
             six.raise_from(exc, err[1])
 
