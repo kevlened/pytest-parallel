@@ -189,9 +189,17 @@ class SafeNumber(object):
             self._val.value += i
             return self
 
+    def __ge__(self, i):
+        with self._lock:
+            return int(self._val.value) >= i
+
     def __gt__(self, i):
         with self._lock:
             return int(self._val.value) > i
+
+    def __le__(self, i):
+        with self._lock:
+            return int(self._val.value) <= i
 
     def __lt__(self, i):
         with self._lock:
@@ -211,6 +219,10 @@ class SafeNumber(object):
     def __str__(self):
         with self._lock:
             return str(self._val.value)
+
+    def __repr__(self):
+        with self._lock:
+            return repr(self._val.value)
 
     @property
     def value(self):
@@ -243,6 +255,7 @@ class ParallelRunner(object):
 
         # prevent mangling the output
         reporter.showfspath = False
+        reporter._show_progress_info = False
 
         # get the number of workers
         workers = parse_config(config, 'workers')
