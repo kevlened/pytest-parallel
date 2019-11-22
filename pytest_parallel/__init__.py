@@ -232,6 +232,7 @@ class ParallelRunner(object):
 
         # prevent mangling the output
         reporter.showfspath = False
+        reporter._show_progress_info = False
 
         # get the number of workers
         workers = parse_config(config, 'workers')
