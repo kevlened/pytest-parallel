@@ -15,5 +15,8 @@ install:
   - pipenv run pip install pip==18.0
   - pipenv install --dev
 script:
-  - pipenv run lint
   - pipenv run test
+jobs:
+  include:
+    - name: lint
+      script: pipenv run lint
