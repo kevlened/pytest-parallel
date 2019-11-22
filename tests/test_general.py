@@ -223,3 +223,39 @@ def test_pytest_html(testdir, cli_args):
         assert re.search('1 failed', html) is not None
         assert re.search('passed results-table-row', html) is not None
         assert re.search('failed results-table-row', html) is not None
+
+
+@pytest.mark.parametrize('cli_args', [
+  [],
+  ['--workers=2'],
+  ['--tests-per-worker=2']
+])
+def test_collection_error(testdir, cli_args):
+    testdir.makepyfile(first_file_test="""
+        def test_1():
+            assert 1 == 1
+    """, second_file_test="""
+        raise Exception('Failed to load test file')
+    """)
+    result = testdir.runpytest(*cli_args)
+    result.assert_outcomes(error=1)
+    # Expect error code 2 (Interrupted), which is returned on collection error.
+    assert result.ret == 2
+
+
+@pytest.mark.parametrize('cli_args', [
+  [],
+  ['--workers=2'],
+  ['--tests-per-worker=2']
+])
+def test_collection_collectonly(testdir, cli_args):
+    testdir.makepyfile("def test(): pass")
+    result = testdir.runpytest("--collect-only", *cli_args)
+    result.stdout.fnmatch_lines([
+        "collected 1 item",
+        "<Module test_collection_collectonly.py>",
+        "  <Function test>",
+        "*= no tests ran in *",
+    ])
+    result.assert_outcomes()
+    assert result.ret == 0
