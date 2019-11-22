@@ -378,9 +378,8 @@ class ParallelRunner(object):
             err[1].__traceback__ = err[2]
 
             exc = RuntimeError(
-                "pytest-parallel got {} errors, raising the first from {}.".format(
-                    errors.qsize() + 1, thread_name
-                )
+                "pytest-parallel got {} errors, raising the first from {}."
+                .format(errors.qsize() + 1, thread_name)
             )
 
             six.raise_from(exc, err[1])
