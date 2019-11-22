@@ -241,3 +241,21 @@ def test_collection_error(testdir, cli_args):
     result.assert_outcomes(error=1)
     # Expect error code 2 (Interrupted), which is returned on collection error.
     assert result.ret == 2
+
+
+@pytest.mark.parametrize('cli_args', [
+  [],
+  ['--workers=2'],
+  ['--tests-per-worker=2']
+])
+def test_collection_collectonly(testdir, cli_args):
+    testdir.makepyfile("def test(): pass")
+    result = testdir.runpytest("--collect-only", *cli_args)
+    result.stdout.fnmatch_lines([
+        "collected 1 item",
+        "<Module test_collection_collectonly.py>",
+        "  <Function test>",
+        "*= no tests ran in *",
+    ])
+    result.assert_outcomes()
+    assert result.ret == 0
