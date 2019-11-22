@@ -205,6 +205,7 @@ def test_multiple_failures(testdir, cli_args):
   ['--tests-per-worker=2']
 ])
 def test_pytest_html(testdir, cli_args):
+    pytest.importorskip("pytest_html")
     report = testdir.tmpdir.join('report.html')
     testdir.makepyfile("""
         def test_1():
