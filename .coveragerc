@@ -1,0 +1,20 @@
+[coverage:run]
+include =
+  pytest_parallel/*
+  tests/*
+  */lib/python*/site-packages/pytest_parallel/*
+  */pypy*/site-packages/pytest_parallel/*
+  *\Lib\site-packages\pytest_parallel\*
+branch = 1
+parallel = 1
+
+[coverage:paths]
+source = pytest_parallel/
+  */lib/python*/site-packages/pytest_parallel/
+  */pypy*/site-packages/pytest_parallel/
+  *\Lib\site-packages\pytest_parallel\
+
+[coverage:report]
+exclude_lines =
+    \#\s*pragma: no cover
+    ^\s*raise NotImplementedError\b

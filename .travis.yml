@@ -4,12 +4,9 @@ branches:
   only:
   - master
 cache: pip
-python:
-  - "3.6"
-  - "3.7"
 env:
   global:
-    - PYTEST_ADDOPTS=-vv
+    - PYTEST_ADDOPTS="-vv --cov-report=xml:coverage-travis.xml"
 install:
   - pip install pipenv
   - pipenv run pip install pip==18.0
@@ -18,5 +15,11 @@ script:
   - pipenv run test
 jobs:
   include:
+    - name: py36
+      python: "3.6"
+      env: TOXENV=py36-coverage
+    - name: py37
+      python: "3.7"
+      env: TOXENV=py37-coverage
     - name: lint
       script: pipenv run lint
