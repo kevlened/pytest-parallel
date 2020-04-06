@@ -81,9 +81,10 @@ class ThreadWorker(threading.Thread):
         pickling_support.install()
         while True:
             try:
-                index = self.queue.get_nowait()
-            except Queue.Empty:
-                break
+                index = self.queue.get()
+                if index == 'stop':
+                    self.queue.task_done()
+                    break
             except ConnectionRefusedError:
                 time.sleep(.1)
                 continue
@@ -368,7 +369,7 @@ class ParallelRunner(object):
               .format(self.workers, worker_noun, process_noun,
                       tests_per_worker, test_noun, thread_noun))
 
-        queue_cls = Queue.Queue if self.workers == 1 else self._manager.Queue
+        queue_cls = self._manager.Queue
         queue = queue_cls()
         errors = queue_cls()
 
@@ -381,6 +382,11 @@ class ParallelRunner(object):
 
         for i in range(len(session.items)):
             queue.put(i)
+
+        # Now we need to put stopping sentinels, so that worker
+        # processes will know, there is time to finish the work.
+        for i in range(self.workers):
+            queue.put('stop')
 
         responses_processor = threading.Thread(
             target=self.process_responses,
@@ -407,7 +413,9 @@ class ParallelRunner(object):
                               args=(self._config, queue, session, tests_per_worker, errors))
             process.start()
             processes.append(process)
+
         [p.join() for p in processes]
+
         queue.join()
         wait_for_responses_processor()
 
@@ -438,12 +446,6 @@ class ParallelRunner(object):
             data = self._config.hook.pytest_report_to_serializable(
                 config=self._config, report=report
             )
-            import os
-            pid = os.getpid()
-            ppid = os.getppid()
-            with open(f'log/{pid}-parallel.log', 'a') as f:
-                f.write(f'PPID: {ppid}: sending testreport to master from {pid}\n')
-
             self.send_response('testreport', report=data)
 
     def on_testreport(self, report):
