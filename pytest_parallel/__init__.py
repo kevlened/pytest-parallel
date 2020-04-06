@@ -6,7 +6,6 @@ import pytest
 import _pytest
 import platform
 import threading
-import queue as Queue
 from py._xmlgen import raw
 from multiprocessing import Manager, Process
 
@@ -55,9 +54,9 @@ def run_test(session, item, nextitem):
 
 
 def process_with_threads(config, queue, session, tests_per_worker, errors):
-    # This function will be called from subprocesses, forked from the main pytest process.
-    # First thing we need to do is to change config's value so we know we are running
-    # as a worker.
+    # This function will be called from subprocesses, forked from the main
+    # pytest process. First thing we need to do is to change config's value
+    # so we know we are running as a worker.
     config.parallel_worker = True
 
     threads = []
@@ -408,9 +407,9 @@ class ParallelRunner(object):
         # This flag will be changed after the worker's fork.
         self._config.parallel_worker = False
 
+        args = (self._config, queue, session, tests_per_worker, errors)
         for _ in range(self.workers):
-            process = Process(target=process_with_threads,
-                              args=(self._config, queue, session, tests_per_worker, errors))
+            process = Process(target=process_with_threads, args=args)
             process.start()
             processes.append(process)
 
@@ -464,11 +463,11 @@ class ParallelRunner(object):
                 time.sleep(.1)
                 continue
 
+            callback_name = 'on_' + event_name
             try:
-                callback_name = 'on_' + event_name
                 callback = getattr(self, callback_name)
                 callback(**kwargs)
-            except BaseException as exc:
+            except BaseException:
                 self._log('Exception during calling callback', callback_name)
             finally:
                 try:
