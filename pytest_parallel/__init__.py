@@ -384,7 +384,7 @@ class ParallelRunner(object):
 
         # Now we need to put stopping sentinels, so that worker
         # processes will know, there is time to finish the work.
-        for i in range(self.workers):
+        for i in range(self.workers * tests_per_worker):
             queue.put('stop')
 
         responses_processor = threading.Thread(
