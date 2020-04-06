@@ -1,4 +1,5 @@
 import os
+import py
 import time
 import math
 import pytest
@@ -53,7 +54,12 @@ def run_test(session, item, nextitem):
         raise session.Interrupted(session.shouldstop)
 
 
-def process_with_threads(queue, session, tests_per_worker, errors):
+def process_with_threads(config, queue, session, tests_per_worker, errors):
+    # This function will be called from subprocesses, forked from the main pytest process.
+    # First thing we need to do is to change config's value so we know we are running
+    # as a worker.
+    config.parallel_worker = True
+
     threads = []
     for _ in range(tests_per_worker):
         thread = ThreadWorker(queue, session, errors)
@@ -249,7 +255,10 @@ class SafeHtmlTestLogs(raw):
 
 class ParallelRunner(object):
     def __init__(self, config):
+        self._config = config
         self._manager = Manager()
+        self._log = py.log.Producer("pytest-parallel")
+
         reporter = config.pluginmanager.getplugin('terminalreporter')
         html = config.pluginmanager.getplugin('html')
 
@@ -359,27 +368,48 @@ class ParallelRunner(object):
               .format(self.workers, worker_noun, process_noun,
                       tests_per_worker, test_noun, thread_noun))
 
-        queue = Queue.Queue() if self.workers == 1 else self._manager.Queue()
-        errors = Queue.Queue() if self.workers == 1 else self._manager.Queue()
+        queue_cls = Queue.Queue if self.workers == 1 else self._manager.Queue
+        queue = queue_cls()
+        errors = queue_cls()
+
+        # Reports about tests will be gathered from workerss
+        # using this queue. Workers will push reports to the queue,
+        # and a separate thread will rerun pytest_runtest_logreport
+        # for them.
+        # This way, report generators like JUnitXML will work as expected.
+        self.responses_queue = queue_cls()
 
         for i in range(len(session.items)):
             queue.put(i)
 
-        if self.workers == 1:
-            process_with_threads(queue, session, tests_per_worker, errors)
-            return True
+        responses_processor = threading.Thread(
+            target=self.process_responses,
+            args=(self.responses_queue,),
+        )
+        responses_processor.daemon = True
+        responses_processor.start()
+
+        def wait_for_responses_processor():
+            self.responses_queue.put(('quit', {}))
+            responses_processor.join()
 
         # Ensure testsfailed is process-safe
         session.testsfailed = SafeNumber(self._manager)
 
         processes = []
+
+        # Current process is not a worker.
+        # This flag will be changed after the worker's fork.
+        self._config.parallel_worker = False
+
         for _ in range(self.workers):
             process = Process(target=process_with_threads,
-                              args=(queue, session, tests_per_worker, errors))
+                              args=(self._config, queue, session, tests_per_worker, errors))
             process.start()
             processes.append(process)
         [p.join() for p in processes]
         queue.join()
+        wait_for_responses_processor()
 
         if not errors.empty():
             import six
@@ -397,3 +427,49 @@ class ParallelRunner(object):
             six.raise_from(exc, err[1])
 
         return True
+
+    def send_response(self, event_name, **arguments):
+        self.responses_queue.put((event_name, arguments))
+
+    def pytest_runtest_logreport(self, report):
+        # We want workers to report to it's master.
+        # Without this "if", master will try to report to itself.
+        if self._config.parallel_worker:
+            data = self._config.hook.pytest_report_to_serializable(
+                config=self._config, report=report
+            )
+            import os
+            pid = os.getpid()
+            ppid = os.getppid()
+            with open(f'log/{pid}-parallel.log', 'a') as f:
+                f.write(f'PPID: {ppid}: sending testreport to master from {pid}\n')
+
+            self.send_response('testreport', report=data)
+
+    def on_testreport(self, report):
+        report = self._config.hook.pytest_report_from_serializable(
+            config=self._config, data=report
+        )
+        self._config.hook.pytest_runtest_logreport(report=report)
+
+    def process_responses(self, queue):
+        while True:
+            try:
+                event_name, kwargs = queue.get()
+                if event_name == 'quit':
+                    break
+            except ConnectionRefusedError:
+                time.sleep(.1)
+                continue
+
+            try:
+                callback_name = 'on_' + event_name
+                callback = getattr(self, callback_name)
+                callback(**kwargs)
+            except BaseException as exc:
+                self._log('Exception during calling callback', callback_name)
+            finally:
+                try:
+                    queue.task_done()
+                except ConnectionRefusedError:
+                    pass
