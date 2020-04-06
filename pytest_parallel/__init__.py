@@ -177,64 +177,6 @@ class ThreadLocalFixtureDef(threading.local, _pytest.fixtures.FixtureDef):
         super(ThreadLocalFixtureDef, self).__init__(*args, **kwargs)
 
 
-class SafeNumber(object):
-    def __init__(self, manager):
-        self._val = manager.Value('i', 0)
-        self._lock = manager.RLock()
-
-    def __add__(self, i):
-        with self._lock:
-            return self._val.value + i
-
-    def __radd__(self, i):
-        with self._lock:
-            return self._val.value + i
-
-    def __iadd__(self, i):
-        with self._lock:
-            self._val.value += i
-            return self
-
-    def __ge__(self, i):
-        with self._lock:
-            return int(self._val.value) >= i
-
-    def __gt__(self, i):
-        with self._lock:
-            return int(self._val.value) > i
-
-    def __le__(self, i):
-        with self._lock:
-            return int(self._val.value) <= i
-
-    def __lt__(self, i):
-        with self._lock:
-            return int(self._val.value) < i
-
-    def __eq__(self, i):
-        with self._lock:
-            return int(self._val.value) == i
-
-    def __bool__(self):
-        return not self.__eq__(0)
-
-    def __int__(self):
-        with self._lock:
-            return int(self._val.value)
-
-    def __str__(self):
-        with self._lock:
-            return str(self._val.value)
-
-    def __repr__(self):
-        with self._lock:
-            return repr(self._val.value)
-
-    @property
-    def value(self):
-        return int(self._val.value)
-
-
 class SafeHtmlTestLogs(raw):
     def __init__(self, manager):
         self._val = manager.list()
@@ -282,38 +224,6 @@ class ParallelRunner(object):
             raise ValueError('workers can only be an integer or "auto"')
 
         self.workers = workers
-
-        if self.workers > 1:
-            # ensure stats are process-safe
-            reporter.stats = self._manager.dict()
-            setdefault = reporter.stats.setdefault
-
-            def setdefault_proxy(key, default=None):
-                if isinstance(default, list) and len(default) == 0:
-                    default = force(lambda: self._manager.list())
-                    if key == "deselected":
-                        # "deselected" on stats can safely ignore list values
-                        res = force(lambda: setdefault(key, default))
-                        res.extend = lambda iter: [
-                            default.append(1) for i in range(len(iter))
-                        ]
-                        return res
-                    return force(lambda: setdefault(key, default))
-            reporter.stats.setdefault = setdefault_proxy
-
-            # ensure pytest-html is process safe
-            if html and hasattr(config, '_html'):
-                htmlplugin = config._html
-                htmlplugin.test_logs = SafeHtmlTestLogs(self._manager)
-                htmlplugin.errors = SafeNumber(self._manager)
-                htmlplugin.failed = SafeNumber(self._manager)
-                htmlplugin.passed = SafeNumber(self._manager)
-                htmlplugin.skipped = SafeNumber(self._manager)
-                htmlplugin.xfailed = SafeNumber(self._manager)
-                htmlplugin.xpassed = SafeNumber(self._manager)
-                has_rerun = config.pluginmanager.hasplugin('rerunfailures')
-                htmlplugin.rerun = SafeNumber(self._manager) \
-                    if has_rerun else None
 
     @pytest.mark.tryfirst
     def pytest_sessionstart(self, session):
@@ -397,9 +307,6 @@ class ParallelRunner(object):
         def wait_for_responses_processor():
             self.responses_queue.put(('quit', {}))
             responses_processor.join()
-
-        # Ensure testsfailed is process-safe
-        session.testsfailed = SafeNumber(self._manager)
 
         processes = []
 
