@@ -23,7 +23,7 @@ def test_concurrent_fixture(testdir):
         def test_1(driver):
             print_('inside test_1')
     """)
-    result = testdir.runpytest(
+    result = testdir.runpytest_subprocess(
       '-s',
       '--tests-per-worker=2'
     )
