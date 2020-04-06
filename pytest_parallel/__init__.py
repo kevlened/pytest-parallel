@@ -202,7 +202,6 @@ class ParallelRunner(object):
         self._log = py.log.Producer("pytest-parallel")
 
         reporter = config.pluginmanager.getplugin('terminalreporter')
-        html = config.pluginmanager.getplugin('html')
 
         # prevent mangling the output
         reporter.showfspath = False
