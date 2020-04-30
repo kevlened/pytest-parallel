@@ -6,7 +6,6 @@ import pytest
 import _pytest
 import platform
 import threading
-from py._xmlgen import raw
 from multiprocessing import Manager, Process
 
 __version__ = '0.0.10'
@@ -175,24 +174,6 @@ class ThreadLocalSetupState(threading.local, _pytest.runner.SetupState):
 class ThreadLocalFixtureDef(threading.local, _pytest.fixtures.FixtureDef):
     def __init__(self, *args, **kwargs):
         super(ThreadLocalFixtureDef, self).__init__(*args, **kwargs)
-
-
-class SafeHtmlTestLogs(raw):
-    def __init__(self, manager):
-        self._val = manager.list()
-        self._lock = manager.RLock()
-
-    def insert(self, index, tbody):
-        # FIXME: sort by this order
-        # ['Error', 'Failed', 'Rerun', 'XFailed',
-        #  'XPassed', 'Skipped', 'Passed']
-        # https://github.com/pytest-dev/pytest-html/blob/cf21aed3635e5bd4baa24e8ea16ffe9dfda1845e/pytest_html/plugin.py#L141-L144
-        log_entry = tbody.unicode(indent=2)
-        self._val.append(log_entry)
-
-    @property
-    def uniobj(self):
-        return ''.join(self._val)
 
 
 class ParallelRunner(object):
