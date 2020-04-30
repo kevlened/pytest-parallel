@@ -6,6 +6,7 @@ import pytest
 import _pytest
 import platform
 import threading
+from tblib import pickling_support
 from multiprocessing import Manager, Process
 
 __version__ = '0.0.10'
@@ -74,8 +75,6 @@ class ThreadWorker(threading.Thread):
         self.errors = errors
 
     def run(self):
-        from tblib import pickling_support
-
         pickling_support.install()
         while True:
             try:
