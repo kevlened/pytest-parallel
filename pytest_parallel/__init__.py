@@ -1,28 +1,31 @@
 import os
 import py
+import sys
 import time
 import math
 import pytest
 import _pytest
 import platform
 import threading
+import multiprocessing
 from tblib import pickling_support
 from multiprocessing import Manager, Process
+
+# In Python 3.8 and later, the default on macOS is spawn.
+# We force forking behavior at the expense of safety.
+#
+# "On macOS, the spawn start method is now the default. The fork start method should be
+#  considered unsafe as it can lead to crashes of the subprocess. See bpo-33725."
+#
+# https://docs.python.org/3/library/multiprocessing.html#contexts-and-start-methods
+if sys.platform.startswith('darwin'):
+    multiprocessing.set_start_method('fork')
 
 __version__ = '0.0.10'
 
 
 def parse_config(config, name):
     return getattr(config.option, name, config.getini(name))
-
-
-def force(fn):
-    while True:
-        try:
-            return fn()
-        except ConnectionRefusedError:
-            time.sleep(.1)
-            continue
 
 
 def pytest_addoption(parser):
@@ -179,7 +182,7 @@ class ParallelRunner(object):
     def __init__(self, config):
         self._config = config
         self._manager = Manager()
-        self._log = py.log.Producer("pytest-parallel")
+        self._log = py.log.Producer('pytest-parallel')
 
         reporter = config.pluginmanager.getplugin('terminalreporter')
 

@@ -53,6 +53,14 @@ pytest --tests-per-worker auto
 pytest --workers 2 --tests-per-worker auto
 ```
 
+## Notice
+
+Beginning with Python 3.8, forking behavior is forced on macOS at the expense of safety.
+
+    Changed in version 3.8: On macOS, the spawn start method is now the default. The fork start method should be considered unsafe as it can lead to crashes of the subprocess. See bpo-33725.
+
+[Source](https://docs.python.org/3/library/multiprocessing.html#contexts-and-start-methods)
+
 ## License
 
 MIT

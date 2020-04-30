@@ -21,5 +21,8 @@ jobs:
     - name: py37
       python: "3.7"
       env: TOXENV=py37-coverage
+    - name: py38
+      python: "3.8"
+      env: TOXENV=py38-coverage
     - name: lint
       script: pipenv run lint
