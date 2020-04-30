@@ -21,7 +21,7 @@ from multiprocessing import Manager, Process
 if sys.platform.startswith('darwin'):
     multiprocessing.set_start_method('fork')
 
-__version__ = '0.0.10'
+__version__ = '0.1.0'
 
 
 def parse_config(config, name):
