@@ -17,6 +17,7 @@ tox = ">=3.0.0"
 tox-pyenv = ">=1.1.0"
 invoke = ">=0.23.0"
 tox-travis = "*"
+importlib_resources = "*"
 
 [requires]
 python_version = "3.7"
