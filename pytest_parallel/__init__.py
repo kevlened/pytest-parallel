@@ -1,4 +1,7 @@
 import os
+from collections import defaultdict
+from typing import Set, Dict
+
 import py
 import sys
 import time
@@ -8,6 +11,8 @@ import _pytest
 import platform
 import threading
 import multiprocessing
+
+from _pytest.python import Instance, Module, Class
 from tblib import pickling_support
 from multiprocessing import Manager, Process
 
@@ -21,7 +26,7 @@ from multiprocessing import Manager, Process
 if sys.platform.startswith('darwin'):
     multiprocessing.set_start_method('fork')
 
-__version__ = '0.1.0'
+__version__ = '0.2.0'
 
 
 def parse_config(config, name):
@@ -33,6 +38,7 @@ def pytest_addoption(parser):
                     '(int or "auto" - one per core)')
     tests_per_worker_help = ('Set the max num of concurrent tests for each '
                              'worker (int or "auto" - split evenly)')
+    serial_class_execution_help = ('Run tests in classes in serial')
 
     group = parser.getgroup('pytest-parallel')
     group.addoption(
@@ -45,9 +51,18 @@ def pytest_addoption(parser):
         dest='tests_per_worker',
         help=tests_per_worker_help
     )
+    group.addoption(
+        '--serial-class-execution',
+        dest='serial_class_execution',
+        default=False,
+        action="store_true",
+        help=serial_class_execution_help
+    )
 
     parser.addini('workers', workers_help)
     parser.addini('tests_per_worker', tests_per_worker_help)
+    parser.addini('serial_class_execution', serial_class_execution_help,
+                  type="bool", default=False)
 
 
 def run_test(session, item, nextitem):
@@ -81,16 +96,16 @@ class ThreadWorker(threading.Thread):
         pickling_support.install()
         while True:
             try:
-                index = self.queue.get()
-                if index == 'stop':
+                indices = self.queue.get()
+                if indices == 'stop':
                     self.queue.task_done()
                     break
             except ConnectionRefusedError:
                 time.sleep(.1)
                 continue
-            item = self.session.items[index]
             try:
-                run_test(self.session, item, None)
+                for index in indices:
+                    run_test(self.session, self.session.items[index], None)
             except BaseException:
                 import pickle
                 import sys
@@ -271,9 +286,28 @@ class ParallelRunner(object):
         # This way, report generators like JUnitXML will work as expected.
         self.responses_queue = queue_cls()
 
-        for i in range(len(session.items)):
-            queue.put(i)
+        serial_class_execution = parse_config(session.config, 'serial_class_execution')
+        if serial_class_execution:
+            function_test_item_indices: Set[int] = set()
+            instance_to_class_test_item_indices: Dict[Instance, Set[int]] = \
+                defaultdict(set)
+            for i, item in enumerate(session.items):
+                if isinstance(item.parent, Module):
+                    function_test_item_indices.add(i)
+                elif isinstance(item.parent, Instance) \
+                        and isinstance(item.parent.parent, Class):
+                    instance_to_class_test_item_indices[item.parent].add(i)
+                else:
+                    raise TypeError(f"Test item was not child of module or class"
+                                    f", was {type(item.parent)}")
 
+            for index in function_test_item_indices:
+                queue.put({index})
+            for indices in instance_to_class_test_item_indices.values():
+                queue.put(indices)
+        else:
+            for i in range(len(session.items)):
+                queue.put({i})
         # Now we need to put stopping sentinels, so that worker
         # processes will know, there is time to finish the work.
         for i in range(self.workers * tests_per_worker):
