@@ -20,7 +20,7 @@ with open(path.join('Pipfile'), encoding='utf-8') as f:
                         in re.findall(pkg_pattern, pkgs)]
 
 setup(
-    name='pytest-parallel',
+    name='cognite-pytest-parallel',
     version=version,
     license='MIT',
     description='a pytest plugin for parallel and concurrent testing',
