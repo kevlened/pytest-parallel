@@ -119,8 +119,6 @@ class ThreadLocalEnviron(os._Environ):
             env.decodekey,
             env.encodevalue,
             env.decodevalue,
-            env.putenv,
-            env.unsetenv
         )
         if hasattr(env, 'thread_store'):
             self.thread_store = env.thread_store
@@ -139,14 +137,14 @@ class ThreadLocalEnviron(os._Environ):
     def __setitem__(self, key, value):
         if key == 'PYTEST_CURRENT_TEST':
             value = self.encodevalue(value)
-            self.putenv(self.encodekey(key), value)
+            os.putenv(self.encodekey(key), value)
             setattr(self.thread_store, key, value)
         else:
             super().__setitem__(key, value)
 
     def __delitem__(self, key):
         if key == 'PYTEST_CURRENT_TEST':
-            self.unsetenv(self.encodekey(key))
+            os.unsetenv(self.encodekey(key))
             if hasattr(self.thread_store, key):
                 delattr(self.thread_store, key)
             else:
