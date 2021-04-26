@@ -62,13 +62,40 @@ def process_with_threads(config, queue, session, tests_per_worker, errors):
     # so we know we are running as a worker.
     config.parallel_worker = True
 
-    threads = []
-    for _ in range(tests_per_worker):
-        thread = ThreadWorker(queue, session, errors)
-        thread.start()
-        threads.append(thread)
-    [t.join() for t in threads]
+    if tests_per_worker == 1:
+        worker_run(queue, session)
+    else:
+        threads = []
+        for _ in range(tests_per_worker):
+            thread = ThreadWorker(queue, session, errors)
+            thread.start()
+            threads.append(thread)
+        [t.join() for t in threads]
 
+def worker_run(queue, session):
+    pickling_support.install()
+    while True:
+        try:
+            index = queue.get()
+            if index == 'stop':
+                queue.task_done()
+                break
+        except ConnectionRefusedError:
+            time.sleep(.1)
+            continue
+        item = session.items[index]
+        try:
+            run_test(session, item, None)
+        except BaseException:
+            import pickle
+            import sys
+
+            self.errors.put(('name', pickle.dumps(sys.exc_info())))
+        finally:
+            try:
+                queue.task_done()
+            except ConnectionRefusedError:
+                pass
 
 class ThreadWorker(threading.Thread):
     def __init__(self, queue, session, errors):
@@ -78,29 +105,7 @@ class ThreadWorker(threading.Thread):
         self.errors = errors
 
     def run(self):
-        pickling_support.install()
-        while True:
-            try:
-                index = self.queue.get()
-                if index == 'stop':
-                    self.queue.task_done()
-                    break
-            except ConnectionRefusedError:
-                time.sleep(.1)
-                continue
-            item = self.session.items[index]
-            try:
-                run_test(self.session, item, None)
-            except BaseException:
-                import pickle
-                import sys
-
-                self.errors.put((self.name, pickle.dumps(sys.exc_info())))
-            finally:
-                try:
-                    self.queue.task_done()
-                except ConnectionRefusedError:
-                    pass
+        worker_run(self.queue, self.session)
 
 
 @pytest.mark.trylast
