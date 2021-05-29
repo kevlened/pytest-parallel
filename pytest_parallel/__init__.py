@@ -113,15 +113,26 @@ def pytest_configure(config):
 
 class ThreadLocalEnviron(os._Environ):
     def __init__(self, env):
-        super().__init__(
-            env._data,
-            env.encodekey,
-            env.decodekey,
-            env.encodevalue,
-            env.decodevalue,
-            env.putenv,
-            env.unsetenv
-        )
+        if sys.version_info >= (3, 9):
+            super().__init__(
+                env._data,
+                env.encodekey,
+                env.decodekey,
+                env.encodevalue,
+                env.decodevalue,
+            )
+            self.putenv = os.putenv
+            self.unsetenv = os.unsetenv
+        else:
+            super().__init__(
+                env._data,
+                env.encodekey,
+                env.decodekey,
+                env.encodevalue,
+                env.decodevalue,
+                env.putenv,
+                env.unsetenv
+            )
         if hasattr(env, 'thread_store'):
             self.thread_store = env.thread_store
         else:
