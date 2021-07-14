@@ -69,7 +69,6 @@ def test_sanity_async_double(testdir):
 
 
 @pytest.mark.parametrize('cli_args', [
-  [],
   ['--workers=2'],
   ['--tests-per-worker=2']
 ])
