@@ -332,7 +332,8 @@ class ParallelRunner(object):
         # Without this "if", master will try to report to itself.
         if self._config.parallel_worker:
             if report.location is not None:
-                report.location = report.location[:2] + (f'{report.location[2]} (pid: {os.getpid()})',)
+                location_with_pid = f'{report.location[2]} (pid: {os.getpid()})'
+                report.location = report.location[:2] + (location_with_pid,)
 
             report.nodeid = f'{report.nodeid} (pid: {os.getpid()})'
             data = self._config.hook.pytest_report_to_serializable(
