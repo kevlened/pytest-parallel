@@ -53,6 +53,19 @@ pytest --tests-per-worker auto
 pytest --workers 2 --tests-per-worker auto
 ```
 
+## Marking some tests to run in a single process
+
+Sometimes you might have one or more tests which should not be run in parallel.
+In this case, you might mark them with `no_parallel` marker:
+
+```python
+@pytest.mark.no_parallel
+def test_sequential(driver):
+    do_something()
+```
+
+Such tests will be runned in the main process in a serialized manner.
+
 ## Notice
 
 Beginning with Python 3.8, forking behavior is forced on macOS at the expense of safety.

@@ -93,8 +93,6 @@ class ThreadWorker(threading.Thread):
                 run_test(self.session, item, None)
             except BaseException:
                 import pickle
-                import sys
-
                 self.errors.put((self.name, pickle.dumps(sys.exc_info())))
             finally:
                 try:
@@ -109,6 +107,10 @@ def pytest_configure(config):
     tests_per_worker = parse_config(config, 'tests_per_worker')
     if not config.option.collectonly and (workers or tests_per_worker):
         config.pluginmanager.register(ParallelRunner(config), 'parallelrunner')
+
+    config.addinivalue_line(
+        "markers", "no_parallel: mark test to run in a single process"
+    )
 
 
 class ThreadLocalEnviron(os._Environ):
@@ -282,8 +284,15 @@ class ParallelRunner(object):
         # This way, report generators like JUnitXML will work as expected.
         self.responses_queue = queue_cls()
 
-        for i in range(len(session.items)):
-            queue.put(i)
+        # Current process is not a worker.
+        # This flag will be changed after the worker's fork.
+        self._config.parallel_worker = False
+
+        for idx, item in enumerate(session.items):
+            if has_no_parallel_marker(item):
+                run_test(session, item, None)
+            else:
+                queue.put(idx)
 
         # Now we need to put stopping sentinels, so that worker
         # processes will know, there is time to finish the work.
@@ -302,10 +311,6 @@ class ParallelRunner(object):
             responses_processor.join()
 
         processes = []
-
-        # Current process is not a worker.
-        # This flag will be changed after the worker's fork.
-        self._config.parallel_worker = False
 
         args = (self._config, queue, session, tests_per_worker, errors)
         for _ in range(self.workers):
@@ -374,3 +379,8 @@ class ParallelRunner(object):
                     queue.task_done()
                 except ConnectionRefusedError:
                     pass
+
+
+def has_no_parallel_marker(item):
+    markers = list(item.iter_markers(name='no_parallel'))
+    return len(markers) > 0
