@@ -53,6 +53,10 @@ pytest --tests-per-worker auto
 pytest --workers 2 --tests-per-worker auto
 ```
 
+## Markers
+
+Use `@pytest.mark.sequence`, to mark tests, that shouldn't run in parallel mode.
+
 ## Notice
 
 Beginning with Python 3.8, forking behavior is forced on macOS at the expense of safety.
