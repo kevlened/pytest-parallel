@@ -53,9 +53,10 @@ pytest --tests-per-worker auto
 pytest --workers 2 --tests-per-worker auto
 ```
 
-## Markers
+## Non parallel runs
 
-Use `@pytest.mark.sequence`, to mark tests, that shouldn't run in parallel mode.
+Use `@pytest.mark.sequence` to mark tests, that shouldn't run in parallel mode.
+Use fixture `sequence` to mark fixtures or tests, that shouldn't run in parallel mode.
 
 ## Notice
 

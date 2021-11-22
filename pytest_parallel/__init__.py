@@ -103,6 +103,15 @@ class ThreadWorker(threading.Thread):
                     pass
 
 
+@pytest.fixture
+def sequence():
+    """
+    Fixture moves test to sequence execution.
+    Fixture can be used with another fixture.
+    """
+    pass
+
+
 @pytest.mark.trylast
 def pytest_configure(config):
     workers = parse_config(config, 'workers')
@@ -297,7 +306,7 @@ class ParallelRunner(object):
         self.responses_queue = queue_cls()
 
         for i, item in enumerate(session.items):
-            if "sequence" in [mark.name for mark in item.own_markers]:
+            if "sequence" in [mark.name for mark in item.own_markers] or "sequence" in item._fixtureinfo.names_closure:
                 sequence_queue.put(i)
             else:
                 parallel_queue.put(i)
