@@ -10,7 +10,7 @@ py = ">=1.11.0"
 
 [dev-packages]
 pylint = "*"
-twine = ">=1.11.0"
+twine = ">=1.11.0,<3.4.0"
 wheel = ">=0.31.0"
 setuptools = ">=39.0.1"
 tox = ">=3.0.0"
@@ -20,7 +20,7 @@ invoke = ">=0.23.0"
 importlib_resources = "*"
 
 [requires]
-python_version = "3.7"
+python_version = "3.10"
 
 [scripts]
 test = "invoke test"

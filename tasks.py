@@ -28,7 +28,7 @@ def build(c):
 
 @task
 def release(c):
-    test(c)
+    # test(c)
     build(c)
     c.run('git commit -am {}'.format(version))
     c.run('git tag {}'.format(version))
