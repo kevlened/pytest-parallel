@@ -1,3 +1,7 @@
+## Maintainers needed
+
+[The project is currently unmaintained](https://github.com/browsertron/pytest-parallel/issues/104#issuecomment-1293941066)
+
 # pytest-parallel
 a pytest plugin for parallel and concurrent testing
 
