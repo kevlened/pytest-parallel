@@ -6,6 +6,7 @@ name = "pypi"
 [packages]
 pytest = ">=3.0.0"
 tblib = "*"
+py = ">=1.11.0"
 
 [dev-packages]
 pylint = "*"
