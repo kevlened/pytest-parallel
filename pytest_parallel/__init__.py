@@ -205,7 +205,7 @@ class ParallelRunner(object):
         workers = parse_config(config, 'workers')
         try:
             if workers == 'auto':
-                workers = os.cpu_count() or 1
+                workers = int(os.getenv("PYTEST_AUTO_WORKERS", os.cpu_count() or 1))
             elif workers:
                 workers = int(workers)
             else:

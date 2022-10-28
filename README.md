@@ -35,7 +35,7 @@ Put simply, `pytest-xdist` does parallelism while `pytest-parallel` does paralle
 
 ## Options
 
-* `workers` (optional) - max workers (aka processes) to start. Can be a **positive integer or `auto`** which uses one worker per core. **Defaults to 1**.
+* `workers` (optional) - max workers (aka processes) to start. Can be a **positive integer or `auto`** which uses one worker per core or the number specified by the environment variable `PYTEST_AUTO_WORKERS`, if set. **Defaults to 1**.
 * `tests-per-worker` (optional) - max concurrent tests per worker. Can be a **positive integer or `auto`** which evenly divides tests among the workers up to 50 concurrent tests. **Defaults to 1**.
 
 ## Examples
