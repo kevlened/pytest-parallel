@@ -237,7 +237,7 @@ def test_collection_error(testdir, cli_args):
         raise Exception('Failed to load test file')
     """)
     result = testdir.runpytest(*cli_args)
-    result.assert_outcomes(error=1)
+    result.assert_outcomes(errors=1)
     # Expect error code 2 (Interrupted), which is returned on collection error.
     assert result.ret == 2
 
@@ -257,4 +257,38 @@ def test_collection_collectonly(testdir, cli_args):
         "*= no tests ran in *",
     ])
     result.assert_outcomes()
+    assert result.ret == 0
+
+
+@pytest.mark.parametrize('cli_args', [
+  ['--workers=4'],
+  ['--tests-per-worker=4']
+])
+def test_sequenced_call(testdir, cli_args):
+    """
+    Tests, that sequenced tests will be called in sequence.
+    """
+    testdir.makepyfile("""
+        import pytest
+        import time
+
+        obj = {"a": None}
+    
+        @pytest.mark.sequence
+        def test_1():
+            time.sleep(0.1)
+            assert obj["a"] == None
+            obj["a"] = "first"
+
+        @pytest.mark.sequence
+        def test_2():
+            assert obj["a"] == "first"
+            obj["a"] = "second"
+
+        @pytest.mark.sequence
+        def test_3():
+            assert obj["a"] == "second"
+    """)
+    result = testdir.runpytest(*cli_args)
+    result.assert_outcomes(passed=3)
     assert result.ret == 0

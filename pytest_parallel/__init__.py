@@ -103,12 +103,23 @@ class ThreadWorker(threading.Thread):
                     pass
 
 
+@pytest.fixture
+def sequence():
+    """
+    Fixture moves test to sequence execution.
+    Fixture can be used with another fixture.
+    """
+    pass
+
+
 @pytest.mark.trylast
 def pytest_configure(config):
     workers = parse_config(config, 'workers')
     tests_per_worker = parse_config(config, 'tests_per_worker')
     if not config.option.collectonly and (workers or tests_per_worker):
         config.pluginmanager.register(ParallelRunner(config), 'parallelrunner')
+
+    config.addinivalue_line("markers", "sequence: mark non parallel tests")
 
 
 class ThreadLocalEnviron(os._Environ):
@@ -189,6 +200,31 @@ class ThreadLocalFixtureDef(threading.local, _pytest.fixtures.FixtureDef):
         super(ThreadLocalFixtureDef, self).__init__(*args, **kwargs)
 
 
+def print_info(workers, tests_per_worker, parallel_queue_size, sequence_queue_size):
+    if workers > 1:
+        worker_noun, process_noun = ('workers', 'processes')
+    else:
+        worker_noun, process_noun = ('worker', 'process')
+
+    if tests_per_worker > 1:
+        test_noun, thread_noun = ('tests', 'threads')
+    else:
+        test_noun, thread_noun = ('test', 'thread')
+
+    print(
+        'pytest-parallel: {} {} ({}), {} {} per worker ({})'.format(
+            workers, worker_noun, process_noun, tests_per_worker, test_noun, thread_noun,
+        )
+    )
+
+    if sequence_queue_size:
+        print(
+            '{} tests will run parallel, {} tests will run in sequence.'.format(
+                parallel_queue_size, sequence_queue_size,
+            )
+        )
+
+
 class ParallelRunner(object):
     def __init__(self, config):
         self._config = config
@@ -257,22 +293,9 @@ class ParallelRunner(object):
             raise ValueError(('tests_per_worker can only be '
                               'an integer or "auto"'))
 
-        if self.workers > 1:
-            worker_noun, process_noun = ('workers', 'processes')
-        else:
-            worker_noun, process_noun = ('worker', 'process')
-
-        if tests_per_worker > 1:
-            test_noun, thread_noun = ('tests', 'threads')
-        else:
-            test_noun, thread_noun = ('test', 'thread')
-
-        print('pytest-parallel: {} {} ({}), {} {} per worker ({})'
-              .format(self.workers, worker_noun, process_noun,
-                      tests_per_worker, test_noun, thread_noun))
-
         queue_cls = self._manager.Queue
-        queue = queue_cls()
+        parallel_queue = queue_cls()
+        sequence_queue = queue_cls()
         errors = queue_cls()
 
         # Reports about tests will be gathered from workerss
@@ -282,13 +305,20 @@ class ParallelRunner(object):
         # This way, report generators like JUnitXML will work as expected.
         self.responses_queue = queue_cls()
 
-        for i in range(len(session.items)):
-            queue.put(i)
+        for i, item in enumerate(session.items):
+            if "sequence" in [mark.name for mark in item.own_markers] or "sequence" in item._fixtureinfo.names_closure:
+                sequence_queue.put(i)
+            else:
+                parallel_queue.put(i)
+
+        print_info(self.workers, tests_per_worker, parallel_queue.qsize(), sequence_queue.qsize())
 
         # Now we need to put stopping sentinels, so that worker
         # processes will know, there is time to finish the work.
         for i in range(self.workers * tests_per_worker):
-            queue.put('stop')
+            parallel_queue.put('stop')
+
+        sequence_queue.put('stop')
 
         responses_processor = threading.Thread(
             target=self.process_responses,
@@ -307,7 +337,7 @@ class ParallelRunner(object):
         # This flag will be changed after the worker's fork.
         self._config.parallel_worker = False
 
-        args = (self._config, queue, session, tests_per_worker, errors)
+        args = (self._config, parallel_queue, session, tests_per_worker, errors)
         for _ in range(self.workers):
             process = Process(target=process_with_threads, args=args)
             process.start()
@@ -315,7 +345,13 @@ class ParallelRunner(object):
 
         [p.join() for p in processes]
 
-        queue.join()
+        parallel_queue.join()
+
+        thread_for_sequence = ThreadWorker(sequence_queue, session, errors)
+        thread_for_sequence.start()
+        thread_for_sequence.join()
+        sequence_queue.join()
+
         wait_for_responses_processor()
 
         if not errors.empty():
