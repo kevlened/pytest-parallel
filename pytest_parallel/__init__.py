@@ -348,10 +348,11 @@ class ParallelRunner(object):
             self.send_response('testreport', report=data)
 
     def on_testreport(self, report):
-        report = self._config.hook.pytest_report_from_serializable(
-            config=self._config, data=report
-        )
-        self._config.hook.pytest_runtest_logreport(report=report)
+        if self._config.parallel_worker:
+            report = self._config.hook.pytest_report_from_serializable(
+                config=self._config, data=report
+            )
+            self._config.hook.pytest_runtest_logreport(report=report)
 
     def process_responses(self, queue):
         while True:
